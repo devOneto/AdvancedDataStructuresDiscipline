@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include <set>
+#include <array>
 
 class RedBlackTree;
 class Node;
@@ -55,61 +56,249 @@ class Line {
 };
 
 class Mod { 
+    
+    public:
+        char type; // 'l' for left, 'r' for right and 'c' for color
+        char new_color;
+        Node* new_node;
+        int version;
+        
+        Mod(char type, char new_color, int version ){
+            this->type = type;
+            this->version = version;
+            this->new_color = new_color;
+        }
+        
+        Mod(char type, Node* new_node, int version ){
+            this->type = type;
+            this->version = version;
+            this->new_node = new_node;
+        }
 
-};
-
-class LeftChildMod : public Mod {
-    Node* node;
-};
-
-class RightChildMod : public Mod {
-    Node* node;
-};
-
-class ColorMod: public Mod {
-    char color;
 };
 
 class Node {
 
+        private:
+        
+        int get_number_of_mods() {
+            int count = 0;
+            if ( modifications[0] != nullptr ) count++;
+            if ( modifications[1] != nullptr ) count++;
+            return count;
+        }
+
+        Node* duplicate_node_with_mods(){
+            Node* resultNode = new Node();
+            for (size_t i = 0; i < get_number_of_mods(); i++)
+            {
+                switch (this->modifications[i]->type)
+                {
+                case 'l': resultNode->left = modifications[i]->new_node; break;
+                case 'r': resultNode->right = modifications[i]->new_node; break;
+                case 'c': resultNode->color = modifications[i]->new_color; break;
+                }
+            }
+            return resultNode;
+        }
+
         public:
 
-            int id;
             Line *line;
             char color = 'R';
-            Node* left;
-            Node* right;
-            Mod* modifications[2];
+            Node* left = nullptr;
+            Node* right = nullptr;
+            Mod* modifications[2] = {nullptr, nullptr};
 
             Node(){}
             Node( Line* line ): line( line ){}
+
+            Node* add_mod(Mod* new_mod) {
+                if ( this->get_number_of_mods() < 2) {
+                    if( modifications[0] == nullptr )
+                    modifications[0] = new_mod;
+                    else if (modifications[1] == nullptr )
+                    modifications[1] = new_mod;
+                    return this;
+                } else {
+                    return duplicate_node_with_mods();
+                }
+            }
+
+            Node* get_left_child_by_version(int version){
+                Node* left_child_node = this->left;
+                if(this->modifications[0] && this->modifications[0]->type == 'l' && this->modifications[0]->version <= version ) {
+                    left_child_node = this->modifications[0]->new_node;
+                }
+                else if(this->modifications[1] && this->modifications[1]->type == 'l' && this->modifications[1]->version <= version ) {
+                    left_child_node = this->modifications[1]->new_node;
+                }
+                return left_child_node;
+            }
+
+            Node* set_left_child_by_version( int version, Line *line ){
+                return this->add_mod(new Mod( 'l' , new Node(line), version ) );
+            }
+
+            Node* set_right_child_by_version( int version, Line* line ){
+                return this->add_mod(new Mod( 'r' , new Node(line), version ) );
+            }
+
+            Node* get_right_child_by_version( int version ){
+                Node* right_child_node = this->right;
+                if(  this->modifications[0] && this->modifications[0]->type == 'r' && this->modifications[0]->version <= version ) {
+                    right_child_node = this->modifications[0]->new_node;
+                } else if(  this->modifications[1] && this->modifications[1]->type == 'r' && this->modifications[1]->version <= version ) {
+                    right_child_node = this->modifications[1]->new_node;
+                }
+                return right_child_node;
+            }
 
 };
 
 class RedBlackTree {
 
+    private:
+
+        Node* get_node_by_line_on_current_version(Line *line) {
+            
+            Node* current_node = this->root_history[ this->root_history.size() -1 ];
+
+            while ( current_node->line != line ) {
+                if ( current_node->line->PointA->y > line->PointA->y )
+                    current_node = current_node->get_left_child_by_version(this->get_current_version_number());
+                if ( current_node->line->PointA->y < line->PointA->y  )
+                    current_node = current_node->get_right_child_by_version(this->get_current_version_number());
+            }
+
+            return current_node;
+
+        }
+
     public:
 
-        Node *root;
-        std::vector< Node* > root_history;
+        Node *root = nullptr;
+        std::vector< Node* > root_history = {nullptr};
 
         RedBlackTree() {}
 
+        int get_current_version_number() { return this->root_history.size(); }
+
+        Node* get_node_left_child_on_last_version(Node* node){
+            return node->get_left_child_by_version( this->get_current_version_number() );
+        }
+
+        Node* get_node_right_child_on_last_version(Node* node){
+            return node->get_right_child_by_version( this->get_current_version_number() );
+        }
+
         Node *find_node (Node* node, Node* root);
-        Node *remove( Line *line, Node *root );
-        Node *find_strict_successor();
+
+        Node *find_strict_successor(Node* node, int version);
+
+        Node *get_successor(Node* node, int version){
+            
+            Node* current_node = node;
+            Node* left_child_node = node->get_left_child_by_version(this->get_current_version_number());
+
+            while ( left_child_node != nullptr )
+            {
+                current_node = left_child_node;
+                left_child_node = current_node->get_left_child_by_version(this->get_current_version_number());
+            }
+            
+            return current_node;
+
+        }
 
         Node* push( Line *line, Node *root ) { 
 
-            if( !this->root ){
+            int version = this->root_history.size();
+
+            if( this->root == nullptr ){
                 Node* new_node = new Node(line);
-                this->root->color = 'B';
                 this->root = new_node;
                 this->root_history.push_back(new_node);
+                this->root->color = 'B';
                 return this->root;
             }
 
-            if ( !root ) return new Node(line);
+            if ( line->PointA->y < root->line->PointA->y ) {
+                if ( this->get_node_left_child_on_last_version(root) == nullptr ) {
+                    root->set_left_child_by_version( this->get_current_version_number(), line);
+                } else {
+                    this->push( line, root->get_left_child_by_version( this->get_current_version_number() ) );
+                }
+            }
+
+            if ( line->PointA->y > root->line->PointA->y ) {
+                if ( this->get_node_right_child_on_last_version(root) == nullptr ){
+                    root->set_right_child_by_version( this->get_current_version_number(), line );
+                } else {
+                    this->push( line, root->get_right_child_by_version( this->get_current_version_number() ) );
+                }
+            }
+
+            if ( line->PointA->y == root->line->PointA->y ) {
+                if( line->angular_coeficient < root->line->angular_coeficient ){
+                    if ( this->get_node_left_child_on_last_version(root) == nullptr ) {
+                        root->set_left_child_by_version( this->get_current_version_number(), line);
+                    } else {
+                        this->push( line, root->get_left_child_by_version( this->get_current_version_number() ) );
+                    }
+                }
+                if (line->angular_coeficient > root->line->angular_coeficient){
+                    if ( this->get_node_right_child_on_last_version(root) == nullptr ){
+                        root->set_right_child_by_version( this->get_current_version_number(), line );
+                    } else {
+                        this->push( line, root->get_right_child_by_version( this->get_current_version_number() ) );
+                    }
+                }
+            }
+
+            this->root->color = 'B';
+
+            if( this->root == root ) {
+                this->root_history.push_back(this->root);
+            }
+
+            return root;
+
+        }
+
+        Node *remove( Line *line, Node *root ) {
+            
+            // line owner node
+            Node* node = get_node_by_line_on_current_version(line);
+            // node that replaces the deleted
+            Node* successor = get_successor(node, this->root_history.size());
+
+            if( node == nullptr ){
+                printf("ERROR: node of line not found!");
+                return nullptr;
+            }
+
+            Node* temp;
+
+            if ( // do not have any children
+                node->get_left_child_by_version(this->get_current_version_number()) == nullptr && 
+                node->get_left_child_by_version(this->get_current_version_number()) == nullptr  
+            ) {
+                temp = node;
+            }
+            if ( // has at least one child
+                node->get_left_child_by_version(this->get_current_version_number()) != nullptr || 
+                node->get_left_child_by_version(this->get_current_version_number()) != nullptr ) 
+            {
+                temp = (root->left != nullptr) ? root->left : root->right;
+            }
+            if ( // has two children
+                node->get_left_child_by_version(this->get_current_version_number()) != nullptr && 
+                node->get_left_child_by_version(this->get_current_version_number()) != nullptr 
+            ) 
+            {
+
+            }
 
         }
             
@@ -173,9 +362,11 @@ int main() {
             auxiliaryRedBlackTree->push( current_line, auxiliaryRedBlackTree->root );
             inputed_lines.push_back(current_line);
         } else {
-            auxiliaryRedBlackTree->remove(current_line, auxiliaryRedBlackTree->root );
+            // auxiliaryRedBlackTree->remove(current_line, auxiliaryRedBlackTree->root );
         }
     }
+
+    // auxiliaryRedBlackTree->remove(current_line, auxiliaryRedBlackTree->root );
 
     return 0;
 }
