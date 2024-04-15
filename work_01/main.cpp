@@ -136,11 +136,20 @@ class Node {
                 return left_child_node;
             }
 
-            Node* set_left_child_by_version( int version, Line *line ){
+
+            Node* set_left_child_node_by_version(int version, Node *node){
+                return this->add_mod( new Mod('l', node, version));
+            }
+
+            Node* set_right_child_node_by_version(int version, Node *node){
+                return this->add_mod( new Mod('r', node, version));
+            }
+
+            Node* set_new_left_child_node_by_version( int version, Line *line ){
                 return this->add_mod(new Mod( 'l' , new Node(line), version ) );
             }
 
-            Node* set_right_child_by_version( int version, Line* line ){
+            Node* set_new_right_child_node_by_version( int version, Line* line ){
                 return this->add_mod(new Mod( 'r' , new Node(line), version ) );
             }
 
@@ -152,6 +161,19 @@ class Node {
                     right_child_node = this->modifications[1]->new_node;
                 }
                 return right_child_node;
+            }
+
+            char get_color_by_version( int version ) {
+                char result = this->color;
+                if ( this->modifications[0] && this->modifications[0]->type == 'c' && this->modifications[0]->version <= version ) 
+                    result = this->modifications[0]->new_color;
+                if ( this->modifications[1] && this->modifications[1]->type == 'c' && this->modifications[1]->version <= version )
+                    result = this->modifications[1]->new_color;
+                return result;
+            }
+
+            Node* set_color_by_version( char new_color, int version ) {
+                return this->add_mod(new Mod('c', new_color, version ));
             }
 
 };
@@ -213,7 +235,7 @@ class RedBlackTree {
 
         Node* push( Line *line, Node *root ) { 
 
-            int version = this->root_history.size();
+            int version = this->get_current_version_number();
 
             if( this->root == nullptr ){
                 Node* new_node = new Node(line);
@@ -225,38 +247,38 @@ class RedBlackTree {
 
             if ( line->PointA->y < root->line->PointA->y ) {
                 if ( this->get_node_left_child_on_last_version(root) == nullptr ) {
-                    root->set_left_child_by_version( this->get_current_version_number(), line);
+                    root->set_new_left_child_node_by_version( version, line );
                 } else {
-                    this->push( line, root->get_left_child_by_version( this->get_current_version_number() ) );
+                    this->push( line, root->get_left_child_by_version( version ) );
                 }
             }
 
             if ( line->PointA->y > root->line->PointA->y ) {
                 if ( this->get_node_right_child_on_last_version(root) == nullptr ){
-                    root->set_right_child_by_version( this->get_current_version_number(), line );
+                    root->set_new_right_child_node_by_version( version, line );
                 } else {
-                    this->push( line, root->get_right_child_by_version( this->get_current_version_number() ) );
+                    this->push( line, root->get_right_child_by_version( version ) );
                 }
             }
 
             if ( line->PointA->y == root->line->PointA->y ) {
                 if( line->angular_coeficient < root->line->angular_coeficient ){
                     if ( this->get_node_left_child_on_last_version(root) == nullptr ) {
-                        root->set_left_child_by_version( this->get_current_version_number(), line);
+                        root->set_new_left_child_node_by_version( version, line );
                     } else {
-                        this->push( line, root->get_left_child_by_version( this->get_current_version_number() ) );
+                        this->push( line, root->get_left_child_by_version( version ) );
                     }
                 }
                 if (line->angular_coeficient > root->line->angular_coeficient){
                     if ( this->get_node_right_child_on_last_version(root) == nullptr ){
-                        root->set_right_child_by_version( this->get_current_version_number(), line );
+                        root->set_new_right_child_node_by_version( version, line );
                     } else {
-                        this->push( line, root->get_right_child_by_version( this->get_current_version_number() ) );
+                        this->push( line, root->get_right_child_by_version( version ) );
                     }
                 }
             }
 
-            this->root->color = 'B';
+            if(this->root->get_color_by_version(version) == 'R') this->root->set_color_by_version('B',version);
 
             if( this->root == root ) {
                 this->root_history.push_back(this->root);
@@ -268,35 +290,57 @@ class RedBlackTree {
 
         Node *remove( Line *line, Node *root ) {
             
-            // line owner node
-            Node* node = get_node_by_line_on_current_version(line);
-            // node that replaces the deleted
-            Node* successor = get_successor(node, this->root_history.size());
+            int version = this->get_current_version_number();
 
-            if( node == nullptr ){
-                printf("ERROR: node of line not found!");
-                return nullptr;
+            if ( root == nullptr ) return nullptr;
+            
+            if ( root->line->PointA->y < line->PointA->y ) {
+                Node* result = this->remove( line, root->get_left_child_by_version(version) );
+                result;
+            }
+            if ( root->line->PointA->y > line->PointA->y ) {
+                Node* result = this->remove( line, root->get_right_child_by_version(version) );
+                result;
             }
 
-            Node* temp;
+            if ( root->line->PointA->y == line->PointA->y && line != root->line ) {
+               if( root->line->angular_coeficient < line->angular_coeficient ) {
+                    Node* result = this->remove( line, root->get_left_child_by_version(version) );
+                    result;
+               }
+               if( root->line->angular_coeficient > line->angular_coeficient ) {
+                    Node* result = this->remove( line, root->get_left_child_by_version(version) );
+                    result;
+               } 
+               if ( root->line->angular_coeficient == line->angular_coeficient ) {
+                // TODO: two different lines, overlaped, can have the same y and angular_coeficient
 
-            if ( // do not have any children
-                node->get_left_child_by_version(this->get_current_version_number()) == nullptr && 
-                node->get_left_child_by_version(this->get_current_version_number()) == nullptr  
-            ) {
-                temp = node;
+               }
             }
-            if ( // has at least one child
-                node->get_left_child_by_version(this->get_current_version_number()) != nullptr || 
-                node->get_left_child_by_version(this->get_current_version_number()) != nullptr ) 
-            {
-                temp = (root->left != nullptr) ? root->left : root->right;
-            }
-            if ( // has two children
-                node->get_left_child_by_version(this->get_current_version_number()) != nullptr && 
-                node->get_left_child_by_version(this->get_current_version_number()) != nullptr 
-            ) 
-            {
+
+            // Here, reached the desired line
+            if ( root->line == line ) {
+
+                // No children
+                if ( root->get_left_child_by_version(version) == nullptr && root->get_right_child_by_version(version) == nullptr ) {
+                    return nullptr;
+                }
+                // One child
+                if ( root->get_left_child_by_version(version) != nullptr || root->get_right_child_by_version(version) == nullptr ) {
+                    Node* child = (root->get_left_child_by_version(version) != nullptr) ? root->get_left_child_by_version(version) : root->get_right_child_by_version(version);                    
+                    
+                    if ( root == this->root ) {
+                        this->root = child;
+                        if(this->root->get_color_by_version(version) == 'R') this->root->set_color_by_version('B',version);
+                        this->root_history.push_back(this->root);
+                    }
+                    
+                    return child;
+                }
+                // Two Children
+                if ( root->get_left_child_by_version(version) != nullptr && root->get_right_child_by_version(version) != nullptr ) {
+                    return this->get_successor(root, version);
+                }
 
             }
 
@@ -362,7 +406,7 @@ int main() {
             auxiliaryRedBlackTree->push( current_line, auxiliaryRedBlackTree->root );
             inputed_lines.push_back(current_line);
         } else {
-            // auxiliaryRedBlackTree->remove(current_line, auxiliaryRedBlackTree->root );
+            auxiliaryRedBlackTree->remove(current_line, auxiliaryRedBlackTree->root );
         }
     }
 
