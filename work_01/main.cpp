@@ -91,6 +91,8 @@ class Node {
         Node* duplicate_node_with_mods(){
             Node* resultNode = new Node();
             resultNode->line = this->line;
+            resultNode->left = this->left;
+            resultNode->right = this->right;
             for (size_t i = 0; i < get_number_of_mods(); i++)
             {
                 switch (this->modifications[i]->type)
@@ -288,7 +290,7 @@ class RedBlackTree {
     public:
 
         Node *root = nullptr;
-        std::vector< Node* > root_history = {nullptr};
+        std::vector< Node* > root_history = { nullptr };
 
         RedBlackTree() {}
 
@@ -394,8 +396,9 @@ class RedBlackTree {
             }
 
             // Handle Root
-            if( this->root == root ) {
-                this->root_history.push_back(this->root);
+            if( this->root->line->id == root->line->id ) {
+                this->root = root;
+                this->root_history.push_back(root);
             }
             
             if(this->root->get_color_by_version(version) == 'R') this->root->set_color_by_version('B',version);
@@ -410,23 +413,31 @@ class RedBlackTree {
 
             if ( root == nullptr ) return nullptr;
             
-            if ( root->line->PointA->y < line->PointA->y ) {
+            if ( line->PointA->y < root->line->PointA->y ) {
                 Node* result = this->remove( line, root->get_left_child_by_version(version) );
-                result;
+                if( result != root->get_left_child_by_version(version)){
+                    root = root->set_left_child_node_by_version(version, result);
+                }
             }
-            if ( root->line->PointA->y > line->PointA->y ) {
+            if ( line->PointA->y > root->line->PointA->y ) {
                 Node* result = this->remove( line, root->get_right_child_by_version(version) );
-                result;
+                if( result != root->get_right_child_by_version(version)){
+                    root = root->set_right_child_node_by_version(version,result);
+                }
             }
 
             if ( root->line->PointA->y == line->PointA->y && line != root->line ) {
-               if( root->line->angular_coeficient < line->angular_coeficient ) {
+               if( line->angular_coeficient < root->line->angular_coeficient ) {
                     Node* result = this->remove( line, root->get_left_child_by_version(version) );
-                    result;
+                    if( result != root->get_left_child_by_version(version)){
+                        root = root->set_left_child_node_by_version(version, result);
+                    }
                }
-               if( root->line->angular_coeficient > line->angular_coeficient ) {
-                    Node* result = this->remove( line, root->get_left_child_by_version(version) );
-                    result;
+               if( line->angular_coeficient > root->line->angular_coeficient  ) {
+                    Node* result = this->remove( line, root->get_right_child_by_version(version) );
+                    if( result != root->get_right_child_by_version(version)){
+                        root = root->set_right_child_node_by_version(version,result);
+                    }
                } 
                if ( root->line->angular_coeficient == line->angular_coeficient ) {
                 // TODO: two different lines, overlaped, can have the same y and angular_coeficient
@@ -439,6 +450,7 @@ class RedBlackTree {
 
                 // No children
                 if ( root->get_left_child_by_version(version) == nullptr && root->get_right_child_by_version(version) == nullptr ) {
+                    if (root == this->root) this->root_history.push_back(nullptr);
                     return nullptr;
                 }
                 // One child
@@ -455,16 +467,25 @@ class RedBlackTree {
                 }
                 // Two Children
                 if ( root->get_left_child_by_version(version) != nullptr && root->get_right_child_by_version(version) != nullptr ) {
-                    return this->get_successor(root, version);
+                    Node* successor = this->get_successor(root, version);
+                    if ( root == this->root ) {
+                        this->root = successor;
+                        if(this->root->get_color_by_version(version) == 'R') this->root->set_color_by_version('B',version);
+                        this->root_history.push_back(this->root);
+                    }
+                    return successor;
                 }
 
             }
 
-            if( this->root == root ) {
-                this->root_history.push_back(this->root);
+            if( this->root->line->id == root->line->id ) {
+                this->root = root;
+                this->root_history.push_back(root);
             }
             
             if(this->root->get_color_by_version(version) == 'R') this->root->set_color_by_version('B',version);
+
+            return root;
 
         }
             
