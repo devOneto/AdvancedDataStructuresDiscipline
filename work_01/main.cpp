@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -12,6 +13,13 @@ class Mod;
 class LeftChildMod;
 class RightChildMod;
 class Line;
+
+class Range {
+
+    public:
+        float begin = 0.0f;
+        float end = 0.0f;
+};
 
 class Point {
 
@@ -302,7 +310,7 @@ class RedBlackTree {
             return node->get_right_child_by_version( this->get_current_version_number() );
         }
 
-        Node *find_node (Node* node, Node* root);
+        Node *find_node_by_line_and_version (Line* line, int version);
 
         Node *find_strict_successor(Node* node, int version);
 
@@ -486,6 +494,99 @@ class RedBlackTree {
             if(this->root->get_color_by_version(version) == 'R') this->root->set_color_by_version('B',version);
 
             return root;
+        }
+
+        Node* find_node_by_version( Line* line, int version ) {
+
+            Node* root = this->root_history[version];
+
+            while( line != root->line ) {
+
+                if( line->PointA->y < root->line->PointA->y ) {
+                    root = root->get_left_child_by_version(version);
+                }
+                if( line->PointA->y > root->line->PointA->y ) {
+                    root = root->get_right_child_by_version(version);
+                }
+                if( line->PointA->y == root->line->PointA->y ) {
+                    if( line->angular_coeficient < root->line->angular_coeficient )
+                        root = root->get_left_child_by_version(version);
+                    if( line->angular_coeficient > root->line->angular_coeficient )
+                        root = root->get_right_child_by_version(version);
+                }
+
+            }
+
+            return root; 
+        }
+
+        Node* get_min_node(Node* node, int version) {
+            while( node->get_left_child_by_version(version) != nullptr ) {
+                node = node->get_left_child_by_version(version);
+            }
+            return node;
+        }
+
+        Node* find_strict_line_successor_of_point_on_interval(Point* point, int version) {
+            
+            Node* root = this->root_history[version];
+
+            if( root->get_right_child_by_version(version) != nullptr ) {
+                return this->get_min_node(root->get_right_child_by_version(version), version);
+            }
+
+            Node* successor = nullptr;
+            Node* current = root;
+
+            while (current != nullptr) {
+                if (point->y < current->line->PointA->y) {
+                    successor = current;
+                    current = current->get_left_child_by_version(version);
+                } else if (point->y > current->line->PointA->y) {
+                    current = current->get_right_child_by_version(version);
+                } else {
+                    break;
+                }
+            }
+
+            return successor;
+
+        }
+
+        bool is_line_above_point(Line *line, Point *point) {
+            float point_y_over_line = point->x * line->angular_coeficient + line->linear_coeficient;
+            return point->y < point_y_over_line;
+        }
+
+        Line* find_line_above_pointer_on_interval( Point* point, int interval, Node* root ) {
+            
+            int version = interval;
+            Node *current_node = root;
+            Line* result = nullptr;
+            Line* line_search_result = nullptr;
+
+            float point_y = point->y;
+            float point_y_over_line = point->x * current_node->line->angular_coeficient + current_node->line->linear_coeficient;
+
+            if (  point_y > point_y_over_line && current_node->get_right_child_by_version(version) != nullptr ) {
+                line_search_result = this->get_min_node(current_node->get_right_child_by_version(version), version)->line;
+                return line_search_result;
+            }
+
+            if ( point_y == point_y_over_line )
+                return current_node->line;
+            if ( point_y < point_y_over_line ){
+                result = current_node->line;
+                if(current_node->get_left_child_by_version(version) != nullptr){
+                    line_search_result = find_line_above_pointer_on_interval(point, version, current_node->get_left_child_by_version(version));
+                }
+                if( line_search_result != nullptr && line_search_result != result ){
+                    result = line_search_result;
+                }
+                return result;
+            }
+            if ( point_y > point_y_over_line )
+                return nullptr;
 
         }
             
@@ -543,17 +644,56 @@ int main() {
     std::vector<Line*> inputed_lines;
     RedBlackTree *auxiliaryRedBlackTree = new RedBlackTree();
 
+    std::vector<float> ranges = {};
+
+    // Insert and remove lines from tree
     for ( int i = 0; i < pontos.size(); i ++) {
         Line *current_line = pontos[i]->owner_line;
         if( !(std::find(inputed_lines.begin(), inputed_lines.end(), current_line ) != inputed_lines.end()) ){
             auxiliaryRedBlackTree->push( current_line, auxiliaryRedBlackTree->root );
             inputed_lines.push_back(current_line);
+            ranges.push_back(current_line->PointA->x);
         } else {
             auxiliaryRedBlackTree->remove(current_line, auxiliaryRedBlackTree->root );
+            ranges.push_back(current_line->PointB->x);
         }
     }
+    
+    int number_of_points_to_verify = std::stoi(input_lines[number_of_retas + 1]);
 
-    // auxiliaryRedBlackTree->remove(current_line, auxiliaryRedBlackTree->root );
+    std::vector<int> results = {};
+
+    for ( int i = 1; i <= number_of_points_to_verify; i++ )
+    {
+        Point *new_point = new Point(float(input_lines[number_of_retas + i + 1][0] - 48),float(input_lines[number_of_retas + i + 1][2] - 48) );
+        int point_range = 0;
+        float current_range_mark = ranges[point_range];
+        while( new_point->x >= current_range_mark ) {
+            point_range++;
+            current_range_mark = ranges[point_range];
+        }
+        results.push_back(auxiliaryRedBlackTree->find_line_above_pointer_on_interval(new_point, point_range, auxiliaryRedBlackTree->root_history[point_range] )->id);
+    }
+
+    //Write Final Results on File:
+    std::ofstream output_file ("output.txt");
+    if (output_file.is_open()){
+        int current_line = 0;
+        while ( current_line <= input_lines.size() + results.size() + 1 ) {  // Loop through each line in the file
+
+            if( current_line < input_lines.size() ) {
+                output_file << input_lines[current_line] + "\n";
+            }
+            if( current_line == input_lines.size() + 1 ) {
+                output_file << " \n";
+            }
+            if( current_line > input_lines.size() + 1 ) {
+                output_file << std::to_string(results[current_line - input_lines.size() - 2]) + "\n";
+            }
+            current_line++;
+        }
+        output_file.close();
+    }
 
     return 0;
 }
