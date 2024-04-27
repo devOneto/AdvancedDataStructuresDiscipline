@@ -47,6 +47,10 @@ class Line {
         float linear_coeficient = 0.0f;
         float angular_coeficient = 0.0f;
 
+        Line (int id) {
+            this->id = id;
+        }
+
         Line( int id, Point* pointA, Point* pointB ) {
             this->id = id;
             this->PointA = pointA;
@@ -241,9 +245,9 @@ class RedBlackTree {
                 y = y->set_left_child_node_by_version(version, x);
             }
 
-            if ( root == this->root ) {
-                this->root = y;
-            }
+            // if ( root == this->root ) {
+            //     this->root = y;
+            // }
 
             return y;
 
@@ -271,21 +275,21 @@ class RedBlackTree {
                 x = x->set_right_child_node_by_version(version, y);
             }
 
-            if ( root != this->root ){
-                this->root = x;
-            }
+            // if ( root != this->root ){
+            //     this->root = x;
+            // }
 
             return x;
 
         }
 
-        void invert_node_color( Node* node ) {
+        Node* invert_node_color( Node* node ) {
             int version = this->get_current_version_number();
-            if( !node  ) return;
-            if(node->color == 'B') 
-                node->set_color_by_version( 'R', version);
+            if( !node  ) { return nullptr; }
+            if(node->get_color_by_version(version) == 'B') 
+                return node->set_color_by_version( 'R', version);
             else
-                node->set_color_by_version( 'R', version );
+                return node->set_color_by_version( 'B', version );
         }
 
         char get_node_color_on_current_version(Node* node, int version) {
@@ -331,6 +335,7 @@ class RedBlackTree {
 
         Node* push( Line *line, Node *root ) { 
 
+            Node* first_root = root;
             int version = this->get_current_version_number();
 
             if( this->root == nullptr ){
@@ -394,17 +399,29 @@ class RedBlackTree {
             if ( right_color == 'R' && left_color == 'B' ) {
                 root = rotate_left(root, version);
             }
+            left_color = this->get_node_color_on_current_version(root->get_left_child_by_version(version), version);
+            right_color = this->get_node_color_on_current_version(root->get_right_child_by_version(version), version);
+            left_left_color = this->get_node_left_child_on_last_version(root) != nullptr ? this->get_node_color_on_current_version( get_node_left_child_on_last_version(root->get_left_child_by_version(version)) ,version) : ' ';
             if ( left_color == 'R' && left_left_color == 'R' ) {
                 root = rotate_right(root, version);
             }
+            left_color = this->get_node_color_on_current_version(root->get_left_child_by_version(version), version);
+            right_color = this->get_node_color_on_current_version(root->get_right_child_by_version(version), version);
+            left_left_color = this->get_node_left_child_on_last_version(root) != nullptr ? this->get_node_color_on_current_version( get_node_left_child_on_last_version(root->get_left_child_by_version(version)) ,version) : ' ';
             if ( left_color == 'R' && right_color == 'R' ) {
-                invert_node_color(root);
-                invert_node_color(root->left);
-                invert_node_color(root->right);
+                root = invert_node_color(root);
+                Node* root_left_after_color_change = invert_node_color(root->get_left_child_by_version(version));
+                if ( root_left_after_color_change != root->get_left_child_by_version(version)){
+                    root = root->set_left_child_node_by_version(version, root_left_after_color_change);
+                }
+                Node* root_right_after_color_change = invert_node_color(root->get_right_child_by_version(version));
+                if ( root_right_after_color_change != root->get_right_child_by_version(version)){
+                    root = root->set_right_child_node_by_version(version, root_right_after_color_change);
+                }
             }
 
             // Handle Root
-            if( this->root->line->id == root->line->id ) {
+            if( this->root->line->id == first_root->line->id ) {
                 this->root = root;
                 this->root_history.push_back(root);
             }
@@ -561,7 +578,7 @@ class RedBlackTree {
         Line* find_line_above_pointer_on_interval( Point* point, int interval, Node* root ) {
             
             int version = interval;
-            Node *current_node = root;
+            Node* current_node = root;
             Line* result = nullptr;
             Line* line_search_result = nullptr;
 
@@ -580,13 +597,13 @@ class RedBlackTree {
                 if(current_node->get_left_child_by_version(version) != nullptr){
                     line_search_result = find_line_above_pointer_on_interval(point, version, current_node->get_left_child_by_version(version));
                 }
-                if( line_search_result != nullptr && line_search_result != result ){
+                if( line_search_result != nullptr && line_search_result->id != -1 && line_search_result != result ){
                     result = line_search_result;
                 }
                 return result;
             }
             if ( point_y > point_y_over_line )
-                return nullptr;
+                return new Line(-1);
 
         }
             
@@ -605,7 +622,7 @@ int main() {
     std::vector< Point* > pontos;
 
     std::vector< std::string > input_lines;
-    std::ifstream input_file ("./input.txt");
+    std::ifstream input_file ("./input3.txt");
 
     for( std::string line; getline( input_file, line ); )
     {
@@ -619,12 +636,16 @@ int main() {
         
         std::string current_line = input_lines[current_line_number];
 
-        float x1 = float(current_line[0] - 48);
-        float y1 = float(current_line[2] - 48);
+        //TODO: reta pode ter x e y decimal
+        float x1 =  std::stof(current_line.substr(0, current_line.find(",")));
+        float y1 = std::stof(current_line.substr(current_line.find(",") + 1, current_line.find(" ") ));
         Point *pointA = new Point(x1,y1);
 
-        float x2 = float(current_line[4] - 48);
-        float y2 = float(current_line[6] - 48);
+        current_line.erase(0,current_line.find(" "));
+
+        //TODO: reta pode ter x e y decimal
+        float x2 =  std::stof(current_line.substr(0, current_line.find(",")));
+        float y2 = std::stof(current_line.substr(current_line.find(",") + 1, current_line.size() - 1 ));
         Point *pointB = new Point(x2,y2);
 
         Line* newLine = new Line( current_line_number, pointA, pointB);
@@ -665,13 +686,23 @@ int main() {
 
     for ( int i = 1; i <= number_of_points_to_verify; i++ )
     {
-        Point *new_point = new Point(float(input_lines[number_of_retas + i + 1][0] - 48),float(input_lines[number_of_retas + i + 1][2] - 48) );
+        std::string current_line = input_lines[number_of_retas + i + 1];
+
+        std::string str_x = current_line.substr(0, current_line.find(","));
+        float point_x = std::stof(str_x);
+
+        std::string str_y = current_line.substr(current_line.find(",") + 1, current_line.size() - 1 );
+        float point_y = std::stof(str_y);
+
+        Point *new_point = new Point(point_x, point_y);
         int point_range = 0;
         float current_range_mark = ranges[point_range];
+        
         while( new_point->x >= current_range_mark ) {
             point_range++;
             current_range_mark = ranges[point_range];
         }
+
         results.push_back(auxiliaryRedBlackTree->find_line_above_pointer_on_interval(new_point, point_range, auxiliaryRedBlackTree->root_history[point_range] )->id);
     }
 
