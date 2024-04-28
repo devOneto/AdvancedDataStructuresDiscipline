@@ -423,10 +423,10 @@ class RedBlackTree {
             // Handle Root
             if( this->root->line->id == first_root->line->id ) {
                 this->root = root;
-                this->root_history.push_back(root);
+                if(this->root->get_color_by_version(version) == 'R') this->root = this->root->set_color_by_version('B',version);
+                this->root_history.push_back(this->root);
             }
             
-            if(this->root->get_color_by_version(version) == 'R') this->root->set_color_by_version('B',version);
 
             return root;
 
@@ -434,6 +434,7 @@ class RedBlackTree {
 
         Node *remove( Line *line, Node *root ) {
             
+            Node* first_root = root;
             int version = this->get_current_version_number();
 
             if ( root == nullptr ) return nullptr;
@@ -479,7 +480,10 @@ class RedBlackTree {
                     return nullptr;
                 }
                 // One child
-                if ( root->get_left_child_by_version(version) != nullptr || root->get_right_child_by_version(version) == nullptr ) {
+                if ( 
+                    (root->get_left_child_by_version(version) == nullptr && root->get_right_child_by_version(version) != nullptr) || 
+                    (root->get_right_child_by_version(version) == nullptr && root->get_left_child_by_version(version) != nullptr)
+                ) {
                     Node* child = (root->get_left_child_by_version(version) != nullptr) ? root->get_left_child_by_version(version) : root->get_right_child_by_version(version);                    
                     
                     if ( root == this->root ) {
@@ -503,12 +507,11 @@ class RedBlackTree {
 
             }
 
-            if( this->root->line->id == root->line->id ) {
+            if( this->root->line->id == first_root->line->id ) {
                 this->root = root;
-                this->root_history.push_back(root);
+                if(this->root->get_color_by_version(version) == 'R') this->root = this->root->set_color_by_version('B',version);
+                this->root_history.push_back(this->root);
             }
-            
-            if(this->root->get_color_by_version(version) == 'R') this->root->set_color_by_version('B',version);
 
             return root;
         }
@@ -622,7 +625,7 @@ int main() {
     std::vector< Point* > pontos;
 
     std::vector< std::string > input_lines;
-    std::ifstream input_file ("./input3.txt");
+    std::ifstream input_file ("./input_B.txt");
 
     for( std::string line; getline( input_file, line ); )
     {
