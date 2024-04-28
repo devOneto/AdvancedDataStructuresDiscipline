@@ -109,6 +109,7 @@ class Node {
             resultNode->line = this->line;
             resultNode->left = this->left;
             resultNode->right = this->right;
+            resultNode->color = this->color;
             for (size_t i = 0; i < get_number_of_mods(); i++)
             {
                 switch (this->modifications[i]->type)
@@ -453,7 +454,7 @@ class RedBlackTree {
             }
 
             // Handle Root
-            if( this->root->line->id == first_root->line->id ) {
+            if( this->root->line == first_root->line ) {
                 this->root = root;
                 if(this->root->get_color_by_version(version) == 'R') this->root = this->root->set_color_by_version('B',version);
                 this->root_history.push_back(this->root);
@@ -582,32 +583,6 @@ class RedBlackTree {
             return node;
         }
 
-        Node* find_strict_line_successor_of_point_on_interval(Point* point, int version) {
-            
-            Node* root = this->root_history[version];
-
-            if( root->get_right_child_by_version(version) != nullptr ) {
-                return this->get_min_node(root->get_right_child_by_version(version), version);
-            }
-
-            Node* successor = nullptr;
-            Node* current = root;
-
-            while (current != nullptr) {
-                if (point->y < current->line->PointA->y) {
-                    successor = current;
-                    current = current->get_left_child_by_version(version);
-                } else if (point->y > current->line->PointA->y) {
-                    current = current->get_right_child_by_version(version);
-                } else {
-                    break;
-                }
-            }
-
-            return successor;
-
-        }
-
         bool is_line_above_point(Line *line, Point *point) {
             float point_y_over_line = point->x * line->angular_coeficient + line->linear_coeficient;
             return point->y < point_y_over_line;
@@ -620,11 +595,13 @@ class RedBlackTree {
             Line* result = nullptr;
             Line* line_search_result = nullptr;
 
+
             float point_y = point->y;
             float point_y_over_line = point->x * current_node->line->angular_coeficient + current_node->line->linear_coeficient;
+            float point_over_line_of_search_result = 0.0f;
 
             if (  point_y > point_y_over_line && current_node->get_right_child_by_version(version) != nullptr ) {
-                line_search_result = this->get_min_node(current_node->get_right_child_by_version(version), version)->line;
+                line_search_result = this->find_line_above_pointer_on_interval(point, version, current_node->get_right_child_by_version(version));
                 return line_search_result;
             }
 
@@ -634,8 +611,9 @@ class RedBlackTree {
                 result = current_node->line;
                 if(current_node->get_left_child_by_version(version) != nullptr){
                     line_search_result = find_line_above_pointer_on_interval(point, version, current_node->get_left_child_by_version(version));
+                    point_over_line_of_search_result = point->x * line_search_result->angular_coeficient + line_search_result->linear_coeficient;
                 }
-                if( line_search_result != nullptr && line_search_result->id != -1 && line_search_result != result ){
+                if( line_search_result != nullptr && line_search_result->id != -1 && line_search_result != result && (point_over_line_of_search_result > point_y && point_over_line_of_search_result < point_y_over_line ) ){
                     result = line_search_result;
                 }
                 return result;
@@ -648,7 +626,10 @@ class RedBlackTree {
 };
 
 bool compare_points_x (Point* pointA, Point* pointB ) {
-    return (pointB->x > pointA->x);
+    if(pointA->x != pointB->x) {
+        return pointA->x < pointB->x;
+    }
+    return pointA->y < pointB->y;
 }
 
 int main() {
@@ -660,7 +641,7 @@ int main() {
     std::vector< Point* > pontos;
 
     std::vector< std::string > input_lines;
-    std::ifstream input_file ("./input_B.txt");
+    std::ifstream input_file ("./input_C.txt");
 
     for( std::string line; getline( input_file, line ); )
     {
@@ -696,9 +677,9 @@ int main() {
         pontos.push_back(pointB);
 
         current_line_number++;
+    
+        std::sort( pontos.begin(), pontos.end(), compare_points_x );
     }
-
-    std::sort( pontos.begin(), pontos.end(), compare_points_x );
 
     std::vector<Line*> inputed_lines;
     RedBlackTree *auxiliaryRedBlackTree = new RedBlackTree();
