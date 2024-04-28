@@ -65,6 +65,10 @@ class Line {
             this->angular_coeficient = float( y2 - y1 ) / float( x2 - x1 );
             this->linear_coeficient = y1 - float(this->angular_coeficient * x1);
         }
+
+        float get_y_value_by_line_equation(float x){
+            return this->angular_coeficient * x + this->linear_coeficient;
+        }
 };
 
 class Mod { 
@@ -389,6 +393,34 @@ class RedBlackTree {
                         }
                     }
                 }
+
+                // This could be the only verification
+                if(line->angular_coeficient == root->line->angular_coeficient){
+                    float medium_point_x = (root->line->PointA->x + line->PointB->x ) / 2;
+                    float medium_point_over_line = line->get_y_value_by_line_equation(medium_point_x);
+                    float medium_point_over_root_line = root->line->get_y_value_by_line_equation(medium_point_x);
+                    if( medium_point_over_line < medium_point_over_root_line ){
+                        if ( this->get_node_left_child_on_last_version(root) == nullptr ) {
+                            root = root->set_new_left_child_node_by_version( version, line );
+                        } else {
+                            Node* push_result = this->push( line, root->get_left_child_by_version( version ) );
+                            if( push_result != root->get_left_child_by_version( version ) ){
+                                root = root->set_left_child_node_by_version(version, push_result);                    
+                            }
+                        }
+                    }
+                    if (medium_point_over_line > medium_point_over_root_line){
+                        if ( this->get_node_right_child_on_last_version(root) == nullptr ){
+                            root = root->set_new_right_child_node_by_version( version, line );
+                        } else {
+                            Node* push_result = this->push( line, root->get_right_child_by_version( version ) );
+                            if ( push_result != root->get_right_child_by_version(version) ){
+                                root = root->set_right_child_node_by_version(version, push_result);
+                            }
+                        }
+                    }
+                }
+
             }
 
             // Fix Violations
@@ -476,7 +508,10 @@ class RedBlackTree {
 
                 // No children
                 if ( root->get_left_child_by_version(version) == nullptr && root->get_right_child_by_version(version) == nullptr ) {
-                    if (root == this->root) this->root_history.push_back(nullptr);
+                    if (root == this->root) {
+                        this->root = nullptr;
+                        this->root_history.push_back(nullptr);
+                    }
                     return nullptr;
                 }
                 // One child
