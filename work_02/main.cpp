@@ -326,7 +326,9 @@ public:
 		return;
 	}
 
-	void remove( int value ){}
+	void remove( int value ) {
+
+	}
 
 	std::string get_strict_sucessor( int value ) {
 
@@ -347,13 +349,14 @@ public:
 
 		std::string result;
 
+
+		result = "Aux Vector: ";
 		for( int i = 0; i < this->aux_vector.size(); i++ ) {
 			std::string value = !this->aux_vector[i]->is_empty ? std::to_string(this->aux_vector[i]->key) : "NULL";
-			result +=  value +" ";
+			result +=  value + " ";
 		}
 
-		result += "\n";
-
+		result += "\nVeb Vector: ";
 		for( int i = 0; i < this->veb_vector.size(); i++ ) {
 			std::string value = ! this->veb_vector[i]->is_empty ?  std::to_string(this->veb_vector[i]->key) : "NULL";
 			result += value + " ";

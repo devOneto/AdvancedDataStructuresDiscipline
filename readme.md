@@ -8,7 +8,6 @@ Done!
 - [x] Write Output
 - [x] Inclusion
 - [ ] Removal
+- [ ] Van Emdeboas Vector
 - [x] Successor
-- [ ] Print
-  - [x] Scan 
-  - [ ] Van Emdeboas
+- [x] Print

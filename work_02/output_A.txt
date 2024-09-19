@@ -1,3 +1,3 @@
-12 20 28 NULL 
-20 NULL NULL NULL 
+Aux Vector: 12 20 28 NULL 
+Veb Vector: 20 NULL NULL NULL 
 20
