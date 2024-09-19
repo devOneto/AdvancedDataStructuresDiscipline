@@ -1,5 +1,7 @@
 #include<iostream>
+#include <fstream>
 #include <vector>
+
 
 // Cache Independent B Tree
 
@@ -39,6 +41,7 @@ class Tree {
 	int height = 0;
 	int aux_size = 0;
 	int veb_size = 0;
+	int population = 0;
 	TreeNode* root = nullptr;
 	std::vector< VectorNode* > aux_vector = { nullptr };
 	std::vector< VectorNode* > veb_vector = { nullptr };
@@ -135,6 +138,16 @@ class Tree {
 
 	}
 
+	std::vector< TreeNode* > get_array_from_subtree ( TreeNode* node, int height ) {
+		return {};
+	}
+
+	std::vector< TreeNode* > get_veb_array_from_btree( TreeNode* tree, int height ) {
+
+		// if ( height > 2 ) get_veb_array_from_btree(  )
+		return {};
+	}
+
 public:
 
 	Tree(){}
@@ -181,6 +194,7 @@ public:
 		if ( empty_space_index != -1 ) {
 			new_node->index = empty_space_index;
 			aux_vector[empty_space_index] = new_node;
+			population++;
 			return;
 		}
 
@@ -208,6 +222,7 @@ public:
 				}
 				new_node->index = old_predecessor_index;
 				this->aux_vector[old_predecessor_index] = new_node;
+				population++;
 				return;
 			}
 		}
@@ -236,6 +251,7 @@ public:
 				}
 				new_node->index = old_successor_index;
 				this->aux_vector[old_successor_index] = new_node;
+				population++;
 				return;
 			}
 		}
@@ -271,6 +287,7 @@ public:
 			leaves_row.push_back( aux_vector[scan_index]->tree_node );
 			scan_index ++;
 		}
+		this->height = 1;
 
 		// create nodes with relashionships on three until the root
 		scan_index = 1;
@@ -283,6 +300,7 @@ public:
 			TreeNode* new_left = current_row[ scan_index - 1 ];
 			TreeNode* new_right = current_row[ scan_index ];
 			TreeNode* new_tree_node = new TreeNode( this->_get_bigger_tree_node(new_left, new_right)->aux_vector_node, new_left, new_right );
+			this->height++;
 
 			//if only two elements left, the father is root
 			if ( current_row.size() == 2 ) {
@@ -308,7 +326,42 @@ public:
 		return;
 	}
 
-	void remove(){}
+	void remove( int value ){}
+
+	std::string get_strict_sucessor( int value ) {
+
+		TreeNode* current_node = this->root;
+
+		while( current_node->aux_vector_node->key < value ) {
+			current_node = current_node->right;
+		}
+
+		while ( !current_node->left->aux_vector_node->is_empty && current_node->left->aux_vector_node->key > value  ) {
+			current_node = current_node->left;
+		}
+
+		return std::to_string( current_node->aux_vector_node->key );
+	}
+
+	std::string print() {
+
+		std::string result;
+
+		for( int i = 0; i < this->aux_vector.size(); i++ ) {
+			std::string value = !this->aux_vector[i]->is_empty ? std::to_string(this->aux_vector[i]->key) : "NULL";
+			result +=  value +" ";
+		}
+
+		result += "\n";
+
+		for( int i = 0; i < this->veb_vector.size(); i++ ) {
+			std::string value = ! this->veb_vector[i]->is_empty ?  std::to_string(this->veb_vector[i]->key) : "NULL";
+			result += value + " ";
+		}
+
+		return result;
+
+	}
 
 };
 
@@ -316,11 +369,28 @@ int main(){
 
 	Tree* tree = new Tree();
 
-	tree->insert(20);
-	tree->insert(12);
-	tree->insert(28);
+	std::string line;
+	std::string file_id = "A";
+	std::ifstream input_file("./input_A.txt");
+	std::ofstream output_file ("./output_A.txt");
 
-	std::cout << "Hello World!";
+	if (!input_file.is_open()) {
+		std::cerr << "Error opening the file!" << std::endl;
+		return 1;
+	}
+
+	while ( getline(input_file,line) )
+	{
+		std::string opperation_code = line.substr(0,3);
+		int value = line.length() > 4 ? std::stoi( line.substr(3, line.length() )) : 0;
+
+		if( opperation_code == "INC" ) tree->insert( value );
+		if( opperation_code == "REM" ) tree->remove( value );
+		if( opperation_code == "SUC" ) output_file << tree->get_strict_sucessor( value ) << "\n";
+		if( opperation_code == "IMP" ) output_file << tree->print() << "\n";
+
+	}
+
 	return 0;
 
 }
