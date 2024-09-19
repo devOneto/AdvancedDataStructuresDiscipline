@@ -366,6 +366,7 @@ public:
 		TreeNode* current_node = this->root;
 
 		while( current_node->aux_vector_node->key < value ) {
+			if ( current_node->right == nullptr ) return "NULL";
 			current_node = current_node->right;
 		}
 
