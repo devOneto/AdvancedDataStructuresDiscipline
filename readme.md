@@ -7,7 +7,7 @@ Done!
 - [x] Read Input
 - [x] Write Output
 - [x] Inclusion
-- [ ] Removal
+- [x] Removal
 - [ ] Van Emdeboas Vector
 - [x] Successor
 - [x] Print
