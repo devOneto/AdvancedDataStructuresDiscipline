@@ -1,3 +1,4 @@
+#include <cmath>
 #include<iostream>
 #include <fstream>
 #include <vector>
@@ -175,6 +176,40 @@ class Tree {
 		this->veb_size *= 2;
 	}
 
+	void _table_halving() {
+
+		int scan_index = 0;
+		std::vector< int > empty_spaces;
+		VectorNode* current_node = this->aux_vector[scan_index];
+
+		// scans the aux vector
+		while ( scan_index != aux_size ) {
+
+			// stores all empty spaces indexes on an array
+			if ( current_node->is_empty )
+				empty_spaces.push_back(scan_index);
+
+			// if finds a non empty index, pushes it into the first empty space
+			if ( !current_node->is_empty && !empty_spaces.empty() ) {
+				current_node->index = empty_spaces[0];
+				aux_vector[empty_spaces[0]] = current_node;
+				// gambiarra para fazer pop front...
+				empty_spaces.erase(empty_spaces.begin());
+			}
+
+			scan_index++;
+		}
+
+		for ( int i = this->aux_size; i > aux_size/2; i-- ) {
+			this->aux_vector.pop_back();
+			this->veb_vector.pop_back();
+		}
+
+		this->aux_size /= 2;
+		this->veb_size /= 2;
+
+	}
+
 	void _build_static_tree() {
 		// rebuild tree
 
@@ -243,6 +278,71 @@ public:
 		return nullptr;
 	}
 
+	TreeNode* find_leaf_by_value_vector_search( int value ) {
+
+		// int start = 0;
+		// int end = aux_vector.size();
+		// int scan_index = ( start + end ) / 2;
+		// VectorNode* current_node = aux_vector[0];
+		//
+		// while( current_node->key != value ) {
+		//
+		// 	int empty_verification_index = scan_index;
+		// 	int scan_multiplier = 1;
+		//
+		// 	while ( current_node->is_empty ) {
+		//
+		// 		current_node = aux_vector[empty_verification_index];
+		// 	}
+		//
+		// 	if ( value < aux_vector[scan_index]->key ) {
+		// 		start = 0; end = scan_index; scan_index = ( start + end ) / 2;
+		// 	}
+		// 	if ( value > aux_vector[scan_index]->key ) {
+		// 		start = scan_index; end = aux_vector.size(); scan_index = ( start + end ) / 2;
+		// 	}
+		//
+		// }
+		//
+		//
+		// return current_node;
+	}
+
+	TreeNode* find_leaf_by_value_tree_search( int value ) {
+
+		// TreeNode* current_node = this->root;
+		//
+		// while ( current_node->aux_vector_node->key != value ) {
+		//
+		// 	if( current_node->aux_vector_node->key < value ) {
+		// 		while ( current_node->right->aux_vector_node == current_node->aux_vector_node ) {
+		// 			TreeNode* min_from_right = get_min_from(current_node->right);
+		// 			if( min_from_right->aux_vector_node->key == value ) return min_from_right;
+		// 		}
+		// 	}
+		// 	if ( current_node->aux_vector_node->key > value ) current_node = current_node->left;
+		//
+		// }
+
+	}
+
+	TreeNode* find_leaf_by_value_linear( int value ) {
+
+		VectorNode* current_node = this->aux_vector[0];
+
+		if ( current_node == nullptr ) return nullptr;
+
+		int scan_index = 0;
+
+		while ( current_node->key != value && scan_index < this->aux_size ) {
+			scan_index++;
+			current_node = this->aux_vector[scan_index];
+		}
+
+		return current_node->key == value ? current_node->tree_node : nullptr;
+
+	}
+
 	void insert( int value ) {
 
 		VectorNode* new_node = new VectorNode(value);
@@ -254,6 +354,7 @@ public:
 			this->veb_vector = { root->aux_vector_node };
 			this->aux_size = 1;
 			this->veb_size = 1;
+			this->population++;
 			return;
 		}
 
@@ -359,6 +460,19 @@ public:
 
 	void remove( int value ) {
 
+		TreeNode* current_node = this->find_leaf_by_value_linear(value);
+
+		VectorNode* new_empty_node = new VectorNode(0);
+		new_empty_node->is_empty = true;
+		new_empty_node->index = current_node->aux_vector_node->index;
+
+		aux_vector[current_node->aux_vector_node->index] = new_empty_node;
+		this->population--;
+
+		if ( this->population <= aux_size/4 ) this->_table_halving();
+
+		this->_build_static_tree();
+
 	}
 
 	std::string get_strict_sucessor( int value ) {
@@ -391,11 +505,11 @@ public:
 			result +=  value + " ";
 		}
 
-		result += "\nVeb Vector: ";
-		for( int i = 0; i < this->veb_vector.size(); i++ ) {
-			std::string value = ! this->veb_vector[i]->is_empty ?  std::to_string(this->veb_vector[i]->key) : "NULL";
-			result += value + " ";
-		}
+		// result += "\nVeb Vector: ";
+		// for( int i = 0; i < this->veb_vector.size(); i++ ) {
+		// 	std::string value = ! this->veb_vector[i]->is_empty ?  std::to_string(this->veb_vector[i]->key) : "NULL";
+		// 	result += value + " ";
+		// }
 
 		return result;
 
