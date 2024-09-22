@@ -8,32 +8,20 @@
 
 class Tree;
 class TreeNode;
-class VectorNode;
-
-class VectorNode {
-public:
-
-	int key;
-	int index;
-	bool is_empty = false;
-	TreeNode* tree_node;
-
-	VectorNode(){}
-	VectorNode( int _key ): key(_key) {}
-	VectorNode( int _key, int _index ): key(_key), index(_index) {}
-
-};
 
 class TreeNode {
 public:
 
+	int key;
+	int index;
 	TreeNode* left;
 	TreeNode* right;
-	VectorNode* aux_vector_node;
+	TreeNode* parent;
+	bool is_empty = false;
 
 	TreeNode(){}
-	TreeNode( VectorNode* _aux_vector_node ) : aux_vector_node(_aux_vector_node) {}
-	TreeNode( VectorNode* _aux_vector_node, TreeNode* _left, TreeNode* _right ) : aux_vector_node(_aux_vector_node), left(_left), right(_right) {}
+	TreeNode( int _key ) : key(_key) {}
+	TreeNode( int _key, TreeNode* _left, TreeNode* _right ) : key(_key), left(_left), right(_right) {}
 
 };
 
@@ -44,8 +32,8 @@ class Tree {
 	int veb_size = 0;
 	int population = 0;
 	TreeNode* root = nullptr;
-	std::vector< VectorNode* > aux_vector = { nullptr };
-	std::vector< VectorNode* > veb_vector = { nullptr };
+	std::vector< TreeNode* > aux_vector = { nullptr };
+	std::vector< TreeNode* > veb_vector = { nullptr };
 
 	TreeNode* get_min_from( TreeNode* node ) {
 		while ( node->left != nullptr ) return get_min_from(node->left);
@@ -67,11 +55,11 @@ class Tree {
 		TreeNode* sucessor  = nullptr;
 
 		while ( current_node != nullptr ) {
-			if( node->aux_vector_node->key < current_node->aux_vector_node->key ) {
+			if( node->key < current_node->key ) {
 				sucessor = current_node;
 				current_node = current_node->left;
 			}
-			else if ( node->aux_vector_node->key > current_node->aux_vector_node->key ) {
+			else if ( node->key > current_node->key ) {
 				current_node = current_node->right;
 			}
 		}
@@ -90,11 +78,11 @@ class Tree {
 		TreeNode* predecessor = nullptr;
 
 		while ( current_node != nullptr ) {
-			if( node->aux_vector_node->key > current_node->aux_vector_node->key) {
+			if( node->key > current_node->key) {
 				predecessor = current_node;
 				current_node = current_node->right;
 			}
-			else if( node->aux_vector_node->key < current_node->aux_vector_node->key ) {
+			else if( node->key < current_node->key ) {
 				current_node = current_node->left;
 			}
 		}
@@ -109,16 +97,16 @@ class Tree {
 		TreeNode* current_node = this->root;
 
 		// down right until get a bigger value
-		while ( current_node->aux_vector_node->key < key ) {
-			if( current_node->right == nullptr ) return nullptr;
+		while ( current_node->key < key ) {
+			if( current_node->right == nullptr || current_node->right->is_empty ) return nullptr;
 			current_node = current_node->right;
 		}
 
 		// down left until get a smaller value
 		while (
 			current_node->left != nullptr &&
-			!current_node->left->aux_vector_node->is_empty &&
-			current_node->left->aux_vector_node->key > key
+			!current_node->left->is_empty &&
+			current_node->left->key > key
 			) {
 			current_node = current_node->left;
 		}
@@ -133,14 +121,14 @@ class Tree {
 		TreeNode* current_node = this->root;
 
 		// down left until get a smaller value
-		while( current_node->aux_vector_node->key > key ) {
-			if ( current_node->left == nullptr ) return nullptr;
+		while( current_node->key > key ) {
+			if ( current_node->left == nullptr || current_node->left->is_empty ) return nullptr;
 			current_node = current_node->left;
 		}
 
 		while ( current_node->right != nullptr
-			&& !current_node->right->aux_vector_node->is_empty
-			&& current_node->right->aux_vector_node->key < key ) {
+			&& !current_node->right->is_empty
+			&& current_node->right->key < key ) {
 			current_node = current_node->right;
 		}
 
@@ -150,11 +138,11 @@ class Tree {
 
 	TreeNode* _get_bigger_tree_node(TreeNode* a, TreeNode* b) {
 
-		if ( a->aux_vector_node->is_empty && !b->aux_vector_node->is_empty ) return b;
-		if ( !a->aux_vector_node->is_empty && b->aux_vector_node->is_empty ) return a;
-		if ( a->aux_vector_node->is_empty && b->aux_vector_node->is_empty ) return nullptr;
+		if ( a->is_empty && !b->is_empty ) return b;
+		if ( !a->is_empty && b->is_empty ) return a;
+		if ( a->is_empty && b->is_empty ) return nullptr;
 
-		return a->aux_vector_node->key > b->aux_vector_node->key ? a : b;
+		return a->key > b->key ? a : b;
 
 	}
 
@@ -163,13 +151,11 @@ class Tree {
 		for ( int i = 0; i < this->aux_size; i++ ) {
 
 			//creates the empty spaces
-			VectorNode* new_empty_vector_node = new VectorNode();
-			new_empty_vector_node->is_empty = true;
-			TreeNode* new_empty_tree_node = new TreeNode(new_empty_vector_node);
-			new_empty_vector_node->tree_node = new_empty_tree_node;
+			TreeNode* new_empty_tree_node = new TreeNode();
+			new_empty_tree_node->is_empty = true;
 			// fulfill the aux and veb vector with "empty" nodes
-			this->aux_vector.push_back( new_empty_vector_node );
-			this->veb_vector.push_back( new_empty_vector_node );
+			this->aux_vector.push_back( new_empty_tree_node );
+			this->veb_vector.push_back( new_empty_tree_node );
 
 		}
 		this->aux_size *= 2;
@@ -180,7 +166,7 @@ class Tree {
 
 		int scan_index = 0;
 		std::vector< int > empty_spaces;
-		VectorNode* current_node = this->aux_vector[scan_index];
+		TreeNode* current_node = this->aux_vector[scan_index];
 
 		// scans the aux vector
 		while ( scan_index != aux_size ) {
@@ -211,31 +197,26 @@ class Tree {
 	}
 
 	void _build_static_tree() {
+
 		// rebuild tree
-
-		// init leaves without relashionship
-		int scan_index = 0;
-		std::vector < TreeNode* > leaves_row = {};
-
-		while ( scan_index != aux_size ) {
-			TreeNode* new_tree_node = new TreeNode( aux_vector[scan_index] );
-			aux_vector[scan_index]->tree_node = new_tree_node;
-			leaves_row.push_back( aux_vector[scan_index]->tree_node );
-			scan_index ++;
-		}
 		this->height = 1;
+		int scan_index = 0;
 
 		// create nodes with relashionships on three until the root
 		scan_index = 1;
 		std::vector < TreeNode* > new_row = {};
-		std::vector < TreeNode* > current_row = leaves_row;
+		std::vector < TreeNode* > current_row = this->aux_vector;
 
 		// scans the tree_nodes array to create relashionship
 		while ( scan_index != current_row.size() ) {
 
 			TreeNode* new_left = current_row[ scan_index - 1 ];
 			TreeNode* new_right = current_row[ scan_index ];
-			TreeNode* new_tree_node = new TreeNode( this->_get_bigger_tree_node(new_left, new_right)->aux_vector_node, new_left, new_right );
+			TreeNode* bigger = this->_get_bigger_tree_node(new_left, new_right);
+			TreeNode* new_tree_node = new TreeNode( bigger->key, new_left, new_right );
+			new_tree_node->index = bigger->index;
+			new_left->parent = new_tree_node;
+			new_right->parent = new_tree_node;
 			this->height++;
 
 			//if only two elements left, the father is root
@@ -258,6 +239,9 @@ class Tree {
 			scan_index = scan_index + 1 == current_row.size() ? 1 : scan_index+=2;
 
 		}
+
+		// this->_build_veb_vector(){}
+
 	}
 
 	std::vector< TreeNode* > get_array_from_subtree ( TreeNode* node, int height ) {
@@ -273,10 +257,6 @@ class Tree {
 public:
 
 	Tree(){}
-
-	VectorNode* find(){
-		return nullptr;
-	}
 
 	TreeNode* find_leaf_by_value_vector_search( int value ) {
 
@@ -328,7 +308,7 @@ public:
 
 	TreeNode* find_leaf_by_value_linear( int value ) {
 
-		VectorNode* current_node = this->aux_vector[0];
+		TreeNode* current_node = this->aux_vector[0];
 
 		if ( current_node == nullptr ) return nullptr;
 
@@ -339,33 +319,28 @@ public:
 			current_node = this->aux_vector[scan_index];
 		}
 
-		return current_node->key == value ? current_node->tree_node : nullptr;
+		return current_node->key == value ? current_node : nullptr;
 
 	}
 
 	void insert( int value ) {
 
-		VectorNode* new_node = new VectorNode(value);
-
 		if ( this->root == nullptr ) {
-			new_node->index = 0;
-			this->root = new TreeNode(new_node);
-			this->aux_vector = { root->aux_vector_node };
-			this->veb_vector = { root->aux_vector_node };
+			this->root = new TreeNode(value);
+			this->root->index = 0;
+			this->aux_vector = { root };
+			this->veb_vector = { root };
 			this->aux_size = 1;
 			this->veb_size = 1;
 			this->population++;
 			return;
 		}
 
-		TreeNode* successor_tree_node = this->find_successor_by_key(new_node->key);
-		TreeNode* predecessor_tree_node = this->find_predecessor_by_key(new_node->key);
+		TreeNode* successor_tree_node = this->find_successor_by_key(value);
+		TreeNode* predecessor_tree_node = this->find_predecessor_by_key(value);
 
-		VectorNode* successor = successor_tree_node != nullptr ? successor_tree_node->aux_vector_node : nullptr;
-		VectorNode* predecessor = predecessor_tree_node != nullptr ? predecessor_tree_node->aux_vector_node : nullptr;
-
-		int scan_index = predecessor != nullptr ? predecessor->index : 0;
-		int end_scan_index = successor != nullptr ? successor->index : this->aux_size;
+		int scan_index = ( predecessor_tree_node != nullptr && !predecessor_tree_node->is_empty) ? predecessor_tree_node->index : 0;
+		int end_scan_index = ( successor_tree_node != nullptr && !successor_tree_node->is_empty ) ? successor_tree_node->index : this->aux_size;
 		int empty_space_index = -1;
 
 		// search for empty space between predecessor and sucessor
@@ -380,23 +355,23 @@ public:
 
 		// if finds, put the new node there and end
 		if ( empty_space_index != -1 ) {
-			new_node->index = empty_space_index;
-			aux_vector[empty_space_index] = new_node;
+			aux_vector[empty_space_index] = new TreeNode(value);
+			aux_vector[empty_space_index]->index = empty_space_index;
 			population++;
 			this->_build_static_tree();
 			return;
 		}
 
-		if ( predecessor != nullptr ) {
-			// if not, finds empty space at left of predecessor
+		// if not, finds empty space at left of predecessor
+		if (  predecessor_tree_node != nullptr && !predecessor_tree_node->is_empty ) {
 			int before_predecessor_empty_index = -1;
 			scan_index = 0;
-			while ( scan_index != predecessor->index ) {
+			while ( scan_index != predecessor_tree_node->index ) {
 				if( !aux_vector[scan_index]->is_empty ) {
 					scan_index++;
 				} else {
 					before_predecessor_empty_index = scan_index;
-					scan_index = predecessor->index;
+					scan_index = predecessor_tree_node->index;
 				}
 
 			}
@@ -405,23 +380,23 @@ public:
 			// puts the new node on the place of the predecessor
 			// and ends
 			if ( before_predecessor_empty_index != -1 ) {
-				int old_predecessor_index = predecessor->index;
-				for ( int i = before_predecessor_empty_index; i<predecessor->index; i++ ) {
+				int old_predecessor_index = predecessor_tree_node->index;
+				for ( int i = before_predecessor_empty_index; i<predecessor_tree_node->index; i++ ) {
 					this->aux_vector[i]->index--;
 					this->aux_vector[i-1] = this->aux_vector[i];
 				}
-				new_node->index = old_predecessor_index;
-				this->aux_vector[old_predecessor_index] = new_node;
+				this->aux_vector[old_predecessor_index] = new TreeNode(value);
+				this->aux_vector[old_predecessor_index]->index = old_predecessor_index;
 				population++;
 				this->_build_static_tree();
 				return;
 			}
 		}
 
-		if ( successor != nullptr ) {
-			// if not, finds empty space at right of successor
+		// if not, finds empty space at right of successor
+		if ( successor_tree_node != nullptr && !successor_tree_node->is_empty ) {
 			int after_successor_empty_index = -1;
-			scan_index = successor->index;
+			scan_index = successor_tree_node->index;
 			while ( scan_index != this->aux_size ) {
 				if( !aux_vector[scan_index]->is_empty ) {
 					scan_index++;
@@ -435,24 +410,26 @@ public:
 			// puts the new node on the place of the sucessor
 			// and ends
 			if( after_successor_empty_index != -1 ) {
-				int old_successor_index = successor->index;
+				int old_successor_index = successor_tree_node->index;
 				for ( int i = after_successor_empty_index; i > old_successor_index; i-- ) {
 					this->aux_vector[i-1]->index++;
 					this->aux_vector[ this->aux_vector[i-1]->index ] = this->aux_vector[i-1];
 				}
-				new_node->index = old_successor_index;
-				this->aux_vector[old_successor_index] = new_node;
+				this->aux_vector[old_successor_index] = new TreeNode(value);
+
 				population++;
 				this->_build_static_tree();
 				return;
 			}
 		}
 
+		// there is no space, so doubles the array size
 		this->_table_doubling();
 
 		// after creating enoght space, inserts the new node
-		this->insert(new_node->key);
+		this->insert(value);
 
+		// build the entire tree after doubling
 		this->_build_static_tree();
 
 		return;
@@ -462,11 +439,10 @@ public:
 
 		TreeNode* current_node = this->find_leaf_by_value_linear(value);
 
-		VectorNode* new_empty_node = new VectorNode(0);
-		new_empty_node->is_empty = true;
-		new_empty_node->index = current_node->aux_vector_node->index;
+		aux_vector[current_node->index] = new TreeNode();
+		aux_vector[current_node->index]->is_empty = true;
+		aux_vector[current_node->is_empty]->index = current_node->index;
 
-		aux_vector[current_node->aux_vector_node->index] = new_empty_node;
 		this->population--;
 
 		if ( this->population <= aux_size/4 ) this->_table_halving();
@@ -479,19 +455,19 @@ public:
 
 		TreeNode* current_node = this->root;
 
-		while( current_node->aux_vector_node->key < value ) {
+		while( current_node->key < value ) {
 			if ( current_node->right == nullptr ) return "NULL";
 			current_node = current_node->right;
 		}
 
 		while (
-			!current_node->left->aux_vector_node->is_empty &&
-			current_node->left->aux_vector_node->key > value
+			!current_node->left->is_empty &&
+			current_node->left->key > value
 			) {
 			current_node = current_node->left;
 		}
 
-		return std::to_string( current_node->aux_vector_node->key );
+		return std::to_string( current_node->key );
 	}
 
 	std::string print() {
