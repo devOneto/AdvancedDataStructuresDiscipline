@@ -1,4 +1,4 @@
 Aux Vector: 12 20 28 NULL 
 Aux Vector: 12 18 20 28 
-Aux Vector: 12 18 NULL 28 
-Aux Vector: 12 18 
+Aux Vector: 12 NULL NULL 28 
+Aux Vector: 12 NULL 
