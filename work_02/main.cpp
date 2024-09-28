@@ -146,6 +146,14 @@ class Tree {
 
 	}
 
+	int _get_bigger_tree_node_key(TreeNode* a, TreeNode* b) {
+		return this->_get_bigger_tree_node(a,b) != nullptr ? this->_get_bigger_tree_node(a,b)->key : 0 ;
+	}
+
+	int _get_bigger_tree_node_aux_index(TreeNode* a, TreeNode* b) {
+		return this->_get_bigger_tree_node(a,b) != nullptr ? this->_get_bigger_tree_node(a,b)->aux_index : 0 ;
+	}
+
 	void _table_doubling() {
 		// table doubling
 		for ( int i = 0; i < this->aux_size; i++ ) {
@@ -196,18 +204,35 @@ class Tree {
 
 	}
 
-	void _rebuild_subtree_from_leaft_until_root( TreeNode* leaf_node ) {
+	//           0
+	//    00           01
+	// 000   001   010   011
+	// [0,   1,    2,   3]
+	// 000, 001, 010, 011
 
-		TreeNode* current_node = leaf_node;
+	void _rebuild_subtree_from_interval( int start, int end ) {
+		TreeNode* current_node = this->root;
+		this->_update_post_order(current_node);
+	}
 
-		do {
-			TreeNode* bigger = _get_bigger_tree_node( current_node->parent->left, current_node->parent->right );
-			current_node->parent->aux_index = bigger->aux_index;
-			current_node->parent->is_empty = bigger->is_empty;
-			current_node->parent->key = bigger->key;
-			current_node = current_node->parent;
-		} while ( current_node != this->root );
+	void _update_from_interval(TreeNode* node, int start, int end ) {
+		if( node->left == nullptr && node->right == nullptr ) {
+			node->key = aux_vector[node->aux_index]->key;
+		}  else {
+			if( start < node->aux_index) this->_update_post_order(node->left);
+			this->_update_post_order(node->right);
+			node->key = _get_bigger_tree_node_key(node->left, node->right);
+		}
+	}
 
+	void _update_post_order( TreeNode* node ) {
+		if( node->left == nullptr && node->right == nullptr ) {
+			node->key = aux_vector[node->aux_index]->key;
+		}  else {
+			this->_update_post_order(node->left);
+			this->_update_post_order(node->right);
+			node->key = _get_bigger_tree_node_key(node->left, node->right);
+		}
 	}
 
 	void _build_static_tree() {
@@ -384,6 +409,7 @@ public:
 			population++;
 			// this->_rebuild_subtree_from_leaft_until_root( aux_vector[empty_space_index] );
 			// TODO: rebuild only necessary sub trees
+			this->_build_static_tree();
 			return;
 		}
 
@@ -552,5 +578,4 @@ int main(){
 
 }
 
-// TODO: reconstruir somente os ramos da arvore que foram alterados
 // TODO: gerar ordem de Van Emdeboas
